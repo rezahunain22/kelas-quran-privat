@@ -175,7 +175,7 @@ const LaporanMurid = () => {
             {[
               { icon: Sparkles, label: "Mutqin", value: mutqin, suffix: "surat" },
               { icon: TrendingUp, label: "Dihafal", value: sedang, suffix: "surat" },
-              { icon: Clock, label: "Pertemuan", value: murid.totalPertemuan, suffix: "kali" },
+              { icon: Clock, label: "Sisa Pertemuan", value: murid.totalPertemuan, suffix: "kali" },
               { icon: Target, label: "Jadwal", value: murid.jadwal || "-", suffix: "" },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white/10 backdrop-blur-sm p-3 sm:p-4 border border-white/10">
