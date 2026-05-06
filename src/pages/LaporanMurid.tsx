@@ -14,6 +14,7 @@ import {
 } from "@/data/laporanData";
 import { supabase } from "@/integrations/supabase/client";
 import { SkillRadar } from "@/components/laporan/SkillRadar";
+import { MakhrajSection, type MakhrajItem } from "@/components/laporan/MakhrajSection";
 import { ProgresChart } from "@/components/laporan/ProgresChart";
 import { HafalanSection } from "@/components/laporan/HafalanSection";
 
@@ -32,6 +33,7 @@ const SkillBar = ({ label, value, color }: { label: string; value: number; color
 const LaporanMurid = () => {
   const { slug } = useParams<{ slug: string }>();
   const [murid, setMurid] = useState<Murid | null>(null);
+  const [makhraj, setMakhraj] = useState<MakhrajItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -44,13 +46,15 @@ const LaporanMurid = () => {
       if (!m) { setNotFound(true); setLoading(false); return; }
       muridId = m.id;
 
-      const [skillRes, hafRes, riwRes, progRes] = await Promise.all([
+      const [skillRes, hafRes, riwRes, progRes, makhRes] = await Promise.all([
         supabase.from("skill_score").select("*").eq("murid_id", m.id).maybeSingle(),
         supabase.from("surat_hafalan").select("*").eq("murid_id", m.id),
         supabase.from("riwayat_pekanan").select("*").eq("murid_id", m.id).order("tanggal", { ascending: false }),
         supabase.from("progres_pekanan").select("*").eq("murid_id", m.id).order("urutan"),
+        supabase.from("makhraj_huruf").select("*").eq("murid_id", m.id).order("urutan"),
       ]);
 
+     setMakhraj((makhRes.data ?? []) as MakhrajItem[]);
       const skill = skillRes.data ?? { pengucapan: 0, kelancaran: 0, tajwid: 0, tartil: 0 };
 
       setMurid({
@@ -96,7 +100,9 @@ const LaporanMurid = () => {
         (payload: any) => { if (!muridId || payload.new?.murid_id === muridId || payload.old?.murid_id === muridId) load(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "progres_pekanan" },
         (payload: any) => { if (!muridId || payload.new?.murid_id === muridId || payload.old?.murid_id === muridId) load(); })
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "makhraj_huruf" },
+        (payload: any) => { if (!muridId || payload.new?.murid_id === muridId || payload.old?.murid_id === muridId) load(); })
+          .subscribe();
 
     return () => { supabase.removeChannel(ch); };
   }, [slug]);
@@ -226,13 +232,25 @@ const LaporanMurid = () => {
           </Card>
         </section>
 
-        <Tabs defaultValue="hafalan" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+       <Tabs defaultValue="makhraj" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+            <TabsTrigger value="makhraj">Makhraj</TabsTrigger>
             <TabsTrigger value="hafalan">Hafalan</TabsTrigger>
             <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
             <TabsTrigger value="grafik">Grafik</TabsTrigger>
           </TabsList>
 
+            <TabsContent value="makhraj" className="mt-4 sm:mt-6">
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg sm:text-xl">Penguasaan Makhraj Huruf</CardTitle>
+                <p className="text-sm text-muted-foreground">29 huruf hijaiyah · persentase penguasaan & catatan perbaikan</p>
+              </CardHeader>
+              <CardContent><MakhrajSection items={makhraj} /></CardContent>
+            </Card>
+          </TabsContent>
+
+          
           <TabsContent value="hafalan" className="mt-4 sm:mt-6">
             <Card className="rounded-2xl">
               <CardHeader>

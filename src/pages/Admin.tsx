@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { JUZ_30_SURAT, type Level } from "@/data/laporanData";
+import { HIJAIYAH } from "@/data/hijaiyah";
 
 interface MuridRow {
   id: string;
@@ -250,13 +251,15 @@ const MuridEditor = ({ murid, onChanged, onDeleted }: { murid: MuridRow; onChang
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="skill">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-3xl">
             <TabsTrigger value="skill">Skill</TabsTrigger>
+            <TabsTrigger value="makhraj">Makhraj</TabsTrigger>
             <TabsTrigger value="hafalan">Hafalan</TabsTrigger>
             <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
             <TabsTrigger value="progres">Progres</TabsTrigger>
           </TabsList>
           <TabsContent value="skill" className="mt-4"><SkillEditor muridId={murid.id} /></TabsContent>
+            <TabsContent value="makhraj" className="mt-4"><MakhrajEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="hafalan" className="mt-4"><HafalanEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="riwayat" className="mt-4"><RiwayatEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="progres" className="mt-4"><ProgresEditor muridId={murid.id} /></TabsContent>
@@ -265,6 +268,8 @@ const MuridEditor = ({ murid, onChanged, onDeleted }: { murid: MuridRow; onChang
     </Card>
   );
 };
+
+
 
 // =================== SKILL ===================
 const SkillEditor = ({ muridId }: { muridId: string }) => {
@@ -304,6 +309,125 @@ const SkillEditor = ({ muridId }: { muridId: string }) => {
     </div>
   );
 };
+
+// =================== MAKHRAJ ===================
+interface MakhrajRow {
+  id: string;
+  murid_id: string;
+  urutan: number;
+  huruf: string;
+  nama_huruf: string;
+  kelancaran: number;
+  catatan_perbaikan: string;
+}
+const MakhrajEditor = ({ muridId }: { muridId: string }) => {
+  const [rows, setRows] = useState<MakhrajRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<MakhrajRow | null>(null);
+  const fetchData = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("makhraj_huruf").select("*").eq("murid_id", muridId).order("urutan");
+    setRows((data ?? []) as MakhrajRow[]);
+    setLoading(false);
+  };
+  useEffect(() => { fetchData(); }, [muridId]);
+  const seedAll = async () => {
+    const existing = new Set(rows.map((r) => r.urutan));
+    const toInsert = HIJAIYAH.filter((h) => !existing.has(h.urutan)).map((h) => ({
+      murid_id: muridId, urutan: h.urutan, huruf: h.huruf, nama_huruf: h.nama,
+      kelancaran: 0, catatan_perbaikan: "",
+    }));
+    if (toInsert.length === 0) { toast({ title: "Semua huruf sudah ada" }); return; }
+    const { error } = await supabase.from("makhraj_huruf").insert(toInsert);
+    if (error) { toast({ title: "Gagal seed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${toInsert.length} huruf ditambahkan` });
+    fetchData();
+  };
+  const saveItem = async () => {
+    if (!editing) return;
+    const { error } = await supabase.from("makhraj_huruf").update({
+      kelancaran: editing.kelancaran,
+      catatan_perbaikan: editing.catatan_perbaikan,
+    }).eq("id", editing.id);
+    if (error) { toast({ title: "Gagal", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Tersimpan" });
+    setEditing(null);
+    fetchData();
+  };
+  if (loading) return <Loader2 className="h-5 w-5 animate-spin" />;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={seedAll}>
+          <Plus className="h-4 w-4" />Seed 29 Huruf Hijaiyah
+        </Button>
+      </div>
+      {rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Belum ada data makhraj. Klik "Seed" untuk membuat 29 huruf sekaligus.
+        </p>
+      )}
+      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+        {rows.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setEditing(r)}
+            className="rounded-xl border bg-background p-2 hover:bg-accent transition-colors text-center"
+          >
+            <div className="text-2xl" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>{r.huruf}</div>
+            <div className="text-[10px] text-muted-foreground truncate">{r.nama_huruf}</div>
+            <div className="text-xs font-bold tabular-nums">{r.kelancaran}%</div>
+          </button>
+        ))}
+      </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              <span className="text-3xl mr-2" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                {editing?.huruf}
+              </span>
+              {editing?.nama_huruf}
+            </DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-1.5">
+                  <Label>Penguasaan</Label>
+                  <span className="text-sm font-semibold tabular-nums">{editing.kelancaran}%</span>
+                </div>
+                <Input type="range" min={0} max={100} value={editing.kelancaran}
+                  onChange={(e) => setEditing({ ...editing, kelancaran: parseInt(e.target.value) })} />
+              </div>
+              <div>
+                <Label>Catatan Perbaikan</Label>
+                <Textarea rows={4} value={editing.catatan_perbaikan}
+                  onChange={(e) => setEditing({ ...editing, catatan_perbaikan: e.target.value })}
+                  placeholder="Contoh: tipiskan suara, keluarkan dari ujung lidah, ..." />
+              </div>
+              <div className="flex justify-between items-center">
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  if (!editing) return;
+                  await supabase.from("makhraj_huruf").delete().eq("id", editing.id);
+                  setEditing(null); fetchData();
+                }}>
+                  <Trash2 className="h-4 w-4 text-destructive" />Hapus
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setEditing(null)}>Batal</Button>
+                  <Button onClick={saveItem}><Save className="h-4 w-4" />Simpan</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
 
 // =================== HAFALAN ===================
 const HafalanEditor = ({ muridId }: { muridId: string }) => {

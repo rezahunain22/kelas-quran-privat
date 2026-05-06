@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      makhraj_huruf: {
+        Row: {
+          catatan_perbaikan: string
+          created_at: string
+          huruf: string
+          id: string
+          kelancaran: number
+          murid_id: string
+          nama_huruf: string
+          updated_at: string
+          urutan: number
+        }
+        Insert: {
+          catatan_perbaikan?: string
+          created_at?: string
+          huruf: string
+          id?: string
+          kelancaran?: number
+          murid_id: string
+          nama_huruf: string
+          updated_at?: string
+          urutan: number
+        }
+        Update: {
+          catatan_perbaikan?: string
+          created_at?: string
+          huruf?: string
+          id?: string
+          kelancaran?: number
+          murid_id?: string
+          nama_huruf?: string
+          updated_at?: string
+          urutan?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "makhraj_huruf_murid_id_fkey"
+            columns: ["murid_id"]
+            isOneToOne: false
+            referencedRelation: "murid"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       murid: {
         Row: {
           created_at: string
