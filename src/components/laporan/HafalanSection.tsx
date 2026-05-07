@@ -10,16 +10,20 @@ interface HafalanSectionProps {
 
 const lancarColor = (val: number) => {
   if (val === 0) return "bg-muted text-muted-foreground";
-  if (val < 50) return "bg-orange-100 text-orange-700";
+  if (val < 60) return "bg-red-100 text-orange-700";
+  if (val < 70) return "bg-orange-100 text-orange-700";
   if (val < 80) return "bg-amber-100 text-amber-700";
-  if (val < 100) return "bg-emerald-100 text-emerald-700";
+  if (val < 90) return "bg-emerald-100 text-emerald-700";
+  if (val < 100) return "bg-lime-600 text-white";
   return "bg-primary text-primary-foreground";
 };
 
 const statusLabel = (val: number) => {
   if (val === 0) return "Belum";
-  if (val < 50) return "Mulai";
-  if (val < 80) return "Lancar";
+  if (val < 60) return "Belum Stabil";
+  if (val < 70) return "Perlu Muroja'ah";
+  if (val < 80) return "Cukup Lancar";
+  if (val < 90) return "Lancar";
   if (val < 100) return "Hampir Mutqin";
   return "Mutqin";
 };
