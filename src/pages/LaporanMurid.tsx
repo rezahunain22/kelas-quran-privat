@@ -17,6 +17,7 @@ import { SkillRadar } from "@/components/laporan/SkillRadar";
 import { MakhrajSection, type MakhrajItem } from "@/components/laporan/MakhrajSection";
 import { ProgresChart } from "@/components/laporan/ProgresChart";
 import { HafalanSection } from "@/components/laporan/HafalanSection";
+import { CatatanText } from "@/components/laporan/CatatanText";
 
 const SkillBar = ({ label, value, color }: { label: string; value: number; color: string }) => (
   <div>
@@ -282,7 +283,7 @@ const LaporanMurid = () => {
                         </div>
                         {i === 0 && <Badge className="bg-primary/10 text-primary hover:bg-primary/15 border-0">Terbaru</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{r.catatan}</p>
+                      <CatatanText text={r.catatan} className="text-sm text-muted-foreground mt-2 space-y-2" />
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {r.fokus.map((f) => <Badge key={f} variant="secondary" className="text-[10px] font-medium">{f}</Badge>)}
                       </div>

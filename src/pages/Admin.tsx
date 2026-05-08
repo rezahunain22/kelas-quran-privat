@@ -259,7 +259,7 @@ const MuridEditor = ({ murid, onChanged, onDeleted }: { murid: MuridRow; onChang
             <TabsTrigger value="progres">Progres</TabsTrigger>
           </TabsList>
           <TabsContent value="skill" className="mt-4"><SkillEditor muridId={murid.id} /></TabsContent>
-            <TabsContent value="makhraj" className="mt-4"><MakhrajEditor muridId={murid.id} /></TabsContent>
+          <TabsContent value="makhraj" className="mt-4"><MakhrajEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="hafalan" className="mt-4"><HafalanEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="riwayat" className="mt-4"><RiwayatEditor muridId={murid.id} /></TabsContent>
           <TabsContent value="progres" className="mt-4"><ProgresEditor muridId={murid.id} /></TabsContent>
@@ -268,8 +268,6 @@ const MuridEditor = ({ murid, onChanged, onDeleted }: { murid: MuridRow; onChang
     </Card>
   );
 };
-
-
 
 // =================== SKILL ===================
 const SkillEditor = ({ muridId }: { muridId: string }) => {
@@ -310,125 +308,6 @@ const SkillEditor = ({ muridId }: { muridId: string }) => {
   );
 };
 
-// =================== MAKHRAJ ===================
-interface MakhrajRow {
-  id: string;
-  murid_id: string;
-  urutan: number;
-  huruf: string;
-  nama_huruf: string;
-  kelancaran: number;
-  catatan_perbaikan: string;
-}
-const MakhrajEditor = ({ muridId }: { muridId: string }) => {
-  const [rows, setRows] = useState<MakhrajRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<MakhrajRow | null>(null);
-  const fetchData = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("makhraj_huruf").select("*").eq("murid_id", muridId).order("urutan");
-    setRows((data ?? []) as MakhrajRow[]);
-    setLoading(false);
-  };
-  useEffect(() => { fetchData(); }, [muridId]);
-  const seedAll = async () => {
-    const existing = new Set(rows.map((r) => r.urutan));
-    const toInsert = HIJAIYAH.filter((h) => !existing.has(h.urutan)).map((h) => ({
-      murid_id: muridId, urutan: h.urutan, huruf: h.huruf, nama_huruf: h.nama,
-      kelancaran: 0, catatan_perbaikan: "",
-    }));
-    if (toInsert.length === 0) { toast({ title: "Semua huruf sudah ada" }); return; }
-    const { error } = await supabase.from("makhraj_huruf").insert(toInsert);
-    if (error) { toast({ title: "Gagal seed", description: error.message, variant: "destructive" }); return; }
-    toast({ title: `${toInsert.length} huruf ditambahkan` });
-    fetchData();
-  };
-  const saveItem = async () => {
-    if (!editing) return;
-    const { error } = await supabase.from("makhraj_huruf").update({
-      kelancaran: editing.kelancaran,
-      catatan_perbaikan: editing.catatan_perbaikan,
-    }).eq("id", editing.id);
-    if (error) { toast({ title: "Gagal", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Tersimpan" });
-    setEditing(null);
-    fetchData();
-  };
-  if (loading) return <Loader2 className="h-5 w-5 animate-spin" />;
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={seedAll}>
-          <Plus className="h-4 w-4" />Seed 29 Huruf Hijaiyah
-        </Button>
-      </div>
-      {rows.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          Belum ada data makhraj. Klik "Seed" untuk membuat 29 huruf sekaligus.
-        </p>
-      )}
-      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
-        {rows.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => setEditing(r)}
-            className="rounded-xl border bg-background p-2 hover:bg-accent transition-colors text-center"
-          >
-            <div className="text-2xl" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>{r.huruf}</div>
-            <div className="text-[10px] text-muted-foreground truncate">{r.nama_huruf}</div>
-            <div className="text-xs font-bold tabular-nums">{r.kelancaran}%</div>
-          </button>
-        ))}
-      </div>
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <span className="text-3xl mr-2" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
-                {editing?.huruf}
-              </span>
-              {editing?.nama_huruf}
-            </DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1.5">
-                  <Label>Penguasaan</Label>
-                  <span className="text-sm font-semibold tabular-nums">{editing.kelancaran}%</span>
-                </div>
-                <Input type="range" min={0} max={100} value={editing.kelancaran}
-                  onChange={(e) => setEditing({ ...editing, kelancaran: parseInt(e.target.value) })} />
-              </div>
-              <div>
-                <Label>Catatan Perbaikan</Label>
-                <Textarea rows={4} value={editing.catatan_perbaikan}
-                  onChange={(e) => setEditing({ ...editing, catatan_perbaikan: e.target.value })}
-                  placeholder="Contoh: tipiskan suara, keluarkan dari ujung lidah, ..." />
-              </div>
-              <div className="flex justify-between items-center">
-                <Button variant="ghost" size="sm" onClick={async () => {
-                  if (!editing) return;
-                  await supabase.from("makhraj_huruf").delete().eq("id", editing.id);
-                  setEditing(null); fetchData();
-                }}>
-                  <Trash2 className="h-4 w-4 text-destructive" />Hapus
-                </Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setEditing(null)}>Batal</Button>
-                  <Button onClick={saveItem}><Save className="h-4 w-4" />Simpan</Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-
 // =================== HAFALAN ===================
 const HafalanEditor = ({ muridId }: { muridId: string }) => {
   const [rows, setRows] = useState<HafalanRow[]>([]);
@@ -460,6 +339,8 @@ const HafalanEditor = ({ muridId }: { muridId: string }) => {
     await supabase.from("surat_hafalan").update({ kelancaran }).eq("id", id);
   };
 
+  const [editRow, setEditRow] = useState<HafalanRow | null>(null);
+
   const removeRow = async (id: string) => {
     await supabase.from("surat_hafalan").delete().eq("id", id);
     fetchData();
@@ -488,12 +369,15 @@ const HafalanEditor = ({ muridId }: { muridId: string }) => {
                 </div>
                 <Input type="range" min={0} max={100} value={r.kelancaran} onChange={(e) => updateRow(r.id, parseInt(e.target.value))} className="flex-1 min-w-[120px]" />
                 <span className="w-10 text-right text-sm tabular-nums font-semibold">{r.kelancaran}%</span>
+                <Button size="icon" variant="ghost" onClick={() => setEditRow(r)} title="Edit"><Pencil className="h-4 w-4" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
             ))}
           </div>
         </div>
       ))}
+
+      <SuratEditDialog row={editRow} onClose={() => setEditRow(null)} onSaved={() => { setEditRow(null); fetchData(); }} />
     </div>
   );
 };
@@ -528,6 +412,41 @@ const SuratFormDialog = ({ muridId, onSaved }: { muridId: string; onSaved: () =>
     </Dialog>
   );
 };
+
+const SuratEditDialog = ({ row, onClose, onSaved }: { row: HafalanRow | null; onClose: () => void; onSaved: () => void }) => {
+  const [form, setForm] = useState<HafalanRow | null>(row);
+  useEffect(() => { setForm(row); }, [row]);
+  if (!form) return null;
+  const save = async () => {
+    if (!form.nama_surat.trim()) { toast({ title: "Nama surat wajib", variant: "destructive" }); return; }
+    const { error } = await supabase.from("surat_hafalan").update({
+      juz: form.juz, nomor_surat: form.nomor_surat, nama_surat: form.nama_surat,
+      jumlah_ayat: form.jumlah_ayat, kelancaran: form.kelancaran,
+    }).eq("id", form.id);
+    if (error) { toast({ title: "Gagal", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Surat diperbarui" }); onSaved();
+  };
+  return (
+    <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit Surat</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Juz</Label><Input type="number" min={1} max={30} value={form.juz} onChange={(e) => setForm({ ...form, juz: parseInt(e.target.value) || 1 })} /></div>
+            <div><Label>Nomor Surat</Label><Input type="number" min={1} max={114} value={form.nomor_surat} onChange={(e) => setForm({ ...form, nomor_surat: parseInt(e.target.value) || 1 })} /></div>
+          </div>
+          <div><Label>Nama Surat</Label><Input value={form.nama_surat} onChange={(e) => setForm({ ...form, nama_surat: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Jumlah Ayat</Label><Input type="number" value={form.jumlah_ayat} onChange={(e) => setForm({ ...form, jumlah_ayat: parseInt(e.target.value) || 0 })} /></div>
+            <div><Label>Kelancaran (0-100)</Label><Input type="number" min={0} max={100} value={form.kelancaran} onChange={(e) => setForm({ ...form, kelancaran: parseInt(e.target.value) || 0 })} /></div>
+          </div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Batal</Button><Button onClick={save}>Simpan</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 
 // =================== RIWAYAT ===================
 const RiwayatEditor = ({ muridId }: { muridId: string }) => {
@@ -677,6 +596,132 @@ const ProgresFormDialog = ({ muridId, progres, nextUrutan, onSaved, trigger }: {
         <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Batal</Button><Button onClick={save}>Simpan</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+};
+
+// =================== MAKHRAJ ===================
+interface MakhrajRow {
+  id: string;
+  murid_id: string;
+  urutan: number;
+  huruf: string;
+  nama_huruf: string;
+  kelancaran: number;
+  catatan_perbaikan: string;
+}
+
+const MakhrajEditor = ({ muridId }: { muridId: string }) => {
+  const [rows, setRows] = useState<MakhrajRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<MakhrajRow | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("makhraj_huruf").select("*").eq("murid_id", muridId).order("urutan");
+    setRows((data ?? []) as MakhrajRow[]);
+    setLoading(false);
+  };
+  useEffect(() => { fetchData(); }, [muridId]);
+
+  const seedAll = async () => {
+    const existing = new Set(rows.map((r) => r.urutan));
+    const toInsert = HIJAIYAH.filter((h) => !existing.has(h.urutan)).map((h) => ({
+      murid_id: muridId, urutan: h.urutan, huruf: h.huruf, nama_huruf: h.nama,
+      kelancaran: 0, catatan_perbaikan: "",
+    }));
+    if (toInsert.length === 0) { toast({ title: "Semua huruf sudah ada" }); return; }
+    const { error } = await supabase.from("makhraj_huruf").insert(toInsert);
+    if (error) { toast({ title: "Gagal seed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${toInsert.length} huruf ditambahkan` });
+    fetchData();
+  };
+
+  const saveItem = async () => {
+    if (!editing) return;
+    const { error } = await supabase.from("makhraj_huruf").update({
+      kelancaran: editing.kelancaran,
+      catatan_perbaikan: editing.catatan_perbaikan,
+    }).eq("id", editing.id);
+    if (error) { toast({ title: "Gagal", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Tersimpan" });
+    setEditing(null);
+    fetchData();
+  };
+
+  if (loading) return <Loader2 className="h-5 w-5 animate-spin" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={seedAll}>
+          <Plus className="h-4 w-4" />Seed 29 Huruf Hijaiyah
+        </Button>
+      </div>
+      {rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Belum ada data makhraj. Klik "Seed" untuk membuat 29 huruf sekaligus.
+        </p>
+      )}
+
+      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+        {rows.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setEditing(r)}
+            className="rounded-xl border bg-background p-2 hover:bg-accent transition-colors text-center"
+          >
+            <div className="text-2xl" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>{r.huruf}</div>
+            <div className="text-[10px] text-muted-foreground truncate">{r.nama_huruf}</div>
+            <div className="text-xs font-bold tabular-nums">{r.kelancaran}%</div>
+          </button>
+        ))}
+      </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              <span className="text-3xl mr-2" style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                {editing?.huruf}
+              </span>
+              {editing?.nama_huruf}
+            </DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-1.5">
+                  <Label>Penguasaan</Label>
+                  <span className="text-sm font-semibold tabular-nums">{editing.kelancaran}%</span>
+                </div>
+                <Input type="range" min={0} max={100} value={editing.kelancaran}
+                  onChange={(e) => setEditing({ ...editing, kelancaran: parseInt(e.target.value) })} />
+              </div>
+              <div>
+                <Label>Catatan Perbaikan</Label>
+                <Textarea rows={4} value={editing.catatan_perbaikan}
+                  onChange={(e) => setEditing({ ...editing, catatan_perbaikan: e.target.value })}
+                  placeholder="Contoh: tipiskan suara, keluarkan dari ujung lidah, ..." />
+              </div>
+              <div className="flex justify-between items-center">
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  if (!editing) return;
+                  await supabase.from("makhraj_huruf").delete().eq("id", editing.id);
+                  setEditing(null); fetchData();
+                }}>
+                  <Trash2 className="h-4 w-4 text-destructive" />Hapus
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setEditing(null)}>Batal</Button>
+                  <Button onClick={saveItem}><Save className="h-4 w-4" />Simpan</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

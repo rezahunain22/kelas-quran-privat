@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { CatatanText } from "./CatatanText";
 
 export interface MakhrajItem {
   id?: string;
@@ -105,9 +106,11 @@ export const MakhrajSection = ({ items }: { items: MakhrajItem[] }) => {
                   Penguasaan {active.kelancaran}%
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line leading-relaxed">
-                {active.catatan_perbaikan?.trim() || "Belum ada catatan perbaikan."}
-              </p>
+             {active.catatan_perbaikan?.trim() ? (
+                <CatatanText text={active.catatan_perbaikan} className="text-sm text-muted-foreground mt-2 space-y-2" />
+              ) : (
+                <p className="text-sm text-muted-foreground mt-2">Belum ada catatan perbaikan.</p>
+              )}
             </div>
           </div>
         </Card>
